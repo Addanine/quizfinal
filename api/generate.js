@@ -1,6 +1,5 @@
 // api/generate.js
-const { Configuration, OpenAIApi } = require('openai');
-
+import { Configuration, OpenAIApi } from 'openai';
 module.exports = async (req, res) => {
     try {
         const body = req.body; // Should contain { notes: "..." }

@@ -1,131 +1,45 @@
-import React, { useState } from 'react';
+// src/App.jsx
+import React, { useEffect, useState } from 'react'
+import Auth from './Auth'
+import { supabase } from './supabaseClient'
+import Flashcards from './Flashcards' // your existing flashcard UI
 
 function App() {
-    const [notes, setNotes] = useState('');
-    const [flashcards, setFlashcards] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [user, setUser] = useState(null)
 
-    // 1. Generate flashcards
-    async function handleGenerate() {
-        if (!notes.trim()) {
-            alert('Please enter some notes first.');
-            return;
-        }
-        setLoading(true);
-        setFlashcards([]);
+    useEffect(() => {
+        // Check if there’s an active session on initial load
+        supabase.auth.getSession().then(({ data }) => {
+            setUser(data?.session?.user ?? null)
+        })
 
-        try {
-            const response = await fetch('/api/generate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ notes }),
-            });
+        // Listen for auth state changes
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user ?? null)
+        })
 
-            if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.error || 'Unknown server error');
-            }
+        return () => subscription.unsubscribe()
+    }, [])
 
-            const data = await response.json();
-            setFlashcards(data.flashcards || []);
-        } catch (err) {
-            alert('Error: ' + err.message);
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
+    function handleLogout() {
+        supabase.auth.signOut()
     }
 
-    // 2. Read the flashcards aloud using the Web Speech API
-    function handleReadAloud() {
-        if (!('speechSynthesis' in window)) {
-            alert('Web Speech API not supported in this browser.');
-            return;
-        }
-        // Build a queue of utterances
-        const utterances = [];
-        flashcards.forEach(card => {
-            if (card.question) {
-                const questionUtterance = new SpeechSynthesisUtterance('Question: ' + card.question);
-                utterances.push(questionUtterance);
-            }
-            if (card.answer) {
-                const answerUtterance = new SpeechSynthesisUtterance('Answer: ' + card.answer);
-                utterances.push(answerUtterance);
-            }
-        });
-
-        // Recursively speak them in sequence
-        function speakNext() {
-            if (utterances.length === 0) return;
-            const next = utterances.shift();
-            next.onend = speakNext;
-            window.speechSynthesis.speak(next);
-        }
-        speakNext();
+    if (!user) {
+        // Show the login/signup form if not logged in
+        return <Auth onLogin={(loggedInUser) => setUser(loggedInUser)} />
     }
 
     return (
-        <div style={styles.container}>
-            <h1>Flashcard Generator</h1>
-            <textarea
-                style={styles.textarea}
-                rows={6}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Enter your notes here..."
-            />
-            <br/>
-            <button style={styles.button} onClick={handleGenerate} disabled={loading}>
-                {loading ? 'Generating...' : 'Generate Flashcards'}
-            </button>
+        <div>
+            <p>Welcome, {user.email}!</p>
+            <button onClick={handleLogout}>Logout</button>
 
-            {flashcards.length > 0 && (
-                <div style={styles.flashcards}>
-                    <h2>Generated Flashcards</h2>
-                    {flashcards.map((fc, i) => (
-                        <div key={i} style={styles.flashcard}>
-                            <div><strong>Q:</strong> {fc.question}</div>
-                            <div><strong>A:</strong> {fc.answer}</div>
-                        </div>
-                    ))}
-                    <button style={styles.button} onClick={handleReadAloud}>
-                        Read Aloud
-                    </button>
-                </div>
-            )}
+            <Flashcards user={user} />
         </div>
-    );
+    )
 }
 
-// Some basic inline styles
-const styles = {
-    container: {
-        maxWidth: 600,
-        margin: '40px auto',
-        fontFamily: 'sans-serif',
-        padding: 20
-    },
-    textarea: {
-        width: '100%',
-        fontSize: 16,
-        padding: 10
-    },
-    button: {
-        marginTop: 10,
-        padding: '10px 15px',
-        cursor: 'pointer'
-    },
-    flashcards: {
-        marginTop: 20,
-        padding: 10,
-        border: '1px solid #ccc'
-    },
-    flashcard: {
-        marginBottom: 15
-    }
-};
-
-export default App;
+export default App
