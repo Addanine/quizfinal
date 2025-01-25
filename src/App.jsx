@@ -1,5 +1,4 @@
 // src/App.jsx
-import React, { useEffect, useState } from 'react'
 import Auth from './Auth'
 import { supabase } from './supabaseClient'
 import Flashcards from './Flashcards.jsx' // your existing flashcard UI
