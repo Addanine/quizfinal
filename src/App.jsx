@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react'
 import Auth from './Auth'
 import { supabase } from './supabaseClient'
-import Flashcards from './Flashcards' // your existing flashcard UI
+import Flashcards from './Flashcards.jsx' // your existing flashcard UI
 
 function App() {
     const [user, setUser] = useState(null)
